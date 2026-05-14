@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Browser Notification Demo</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    margin: 0;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .card {
+    background: white;
+    border-radius: 16px;
+    padding: 32px;
+    max-width: 480px;
+    width: 100%;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  }
+  h1 {
+    margin: 0 0 8px 0;
+    font-size: 24px;
+    color: #1a1a1a;
+  }
+  .subtitle {
+    color: #666;
+    margin: 0 0 24px 0;
+    font-size: 14px;
+  }
+  .status {
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-size: 14px;
+    font-weight: 500;
+  }
+  .status.default { background: #fff4e5; color: #b8860b; }
+  .status.granted { background: #e8f5e9; color: #2e7d32; }
+  .status.denied  { background: #ffebee; color: #c62828; }
+  .field {
+    margin-bottom: 16px;
+  }
+  label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 6px;
+  }
+  input, textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+    transition: border-color 0.2s;
+  }
+  input:focus, textarea:focus {
+    outline: none;
+    border-color: #667eea;
+  }
+  textarea {
+    resize: vertical;
+    min-height: 60px;
+  }
+  .buttons {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+  }
+  button {
+    flex: 1;
+    min-width: 140px;
+    padding: 12px 16px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.1s, box-shadow 0.2s;
+  }
+  button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  }
+  button:active {
+    transform: translateY(0);
+  }
+  button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+  .btn-primary {
+    background: #667eea;
+    color: white;
+  }
+  .btn-secondary {
+    background: #f0f0f0;
+    color: #333;
+  }
+  .log {
+    margin-top: 20px;
+    padding: 12px;
+    background: #f8f8fb;
+    border-radius: 8px;
+    font-size: 12px;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    color: #555;
+    max-height: 120px;
+    overflow-y: auto;
+  }
+  .log-entry {
+    margin-bottom: 4px;
+  }
+  .log-entry:last-child {
+    margin-bottom: 0;
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>🔔 Browser Notification Demo</h1>
+    <p class="subtitle">Test how browser notifications work, right from here.</p>
+
+    <div id="status" class="status default">Checking permission...</div>
+
+    <div class="field">
+      <label for="title">Notification title</label>
+      <input id="title" type="text" value="Hey there!">
+    </div>
+
+    <div class="field">
+      <label for="body">Message body</label>
+      <textarea id="body">This is a test notification from your browser.</textarea>
+    </div>
+
+    <div class="field">
+      <label for="delay">Delay (seconds)</label>
+      <input id="delay" type="number" value="0" min="0" step="1">
+    </div>
+
+    <div class="buttons">
+      <button class="btn-secondary" id="requestBtn">Request permission</button>
+      <button class="btn-primary" id="notifyBtn">Send notification</button>
+    </div>
+
+    <div class="log" id="log">
+      <div class="log-entry">Ready.</div>
+    </div>
+  </div>
+
+<script>
+  const statusEl = document.getElementById("status");
+  const logEl = document.getElementById("log");
+  const requestBtn = document.getElementById("requestBtn");
+  const notifyBtn = document.getElementById("notifyBtn");
+
+  function log(msg) {
+    const entry = document.createElement("div");
+    entry.className = "log-entry";
+    const time = new Date().toLocaleTimeString();
+    entry.textContent = `[${time}] ${msg}`;
+    logEl.appendChild(entry);
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function updateStatus() {
+    if (!("Notification" in window)) {
+      statusEl.className = "status denied";
+      statusEl.textContent = "❌ This browser doesn't support notifications.";
+      requestBtn.disabled = true;
+      notifyBtn.disabled = true;
+      return;
+    }
+
+    const perm = Notification.permission;
+    statusEl.className = `status ${perm}`;
+
+    if (perm === "granted") {
+      statusEl.textContent = "✅ Permission granted. You're good to go.";
+      requestBtn.disabled = true;
+    } else if (perm === "denied") {
+      statusEl.textContent = "🚫 Permission denied. Change it in browser settings.";
+      requestBtn.disabled = true;
+    } else {
+      statusEl.textContent = "⏳ Permission not requested yet.";
+      requestBtn.disabled = false;
+    }
+  }
+
+  requestBtn.addEventListener("click", async () => {
+    log("Requesting permission...");
+    try {
+      const result = await Notification.requestPermission();
+      log(`Permission result: ${result}`);
+      updateStatus();
+    } catch (err) {
+      log(`Error: ${err.message}`);
+    }
+  });
+
+  notifyBtn.addEventListener("click", () => {
+    if (!("Notification" in window)) {
+      log("Notifications not supported.");
+      return;
+    }
+
+    if (Notification.permission !== "granted") {
+      log("Permission not granted yet. Requesting...");
+      Notification.requestPermission().then(result => {
+        updateStatus();
+        if (result === "granted") {
+          scheduleNotification();
+        } else {
+          log(`Cannot send. Permission is: ${result}`);
+        }
+      });
+      return;
+    }
+
+    scheduleNotification();
+  });
+
+  function scheduleNotification() {
+    const delay = parseFloat(document.getElementById("delay").value) || 0;
+    if (delay > 0) {
+      log(`Notification scheduled in ${delay}s...`);
+      setTimeout(fire, delay * 1000);
+    } else {
+      fire();
+    }
+  }
+
+  function fire() {
+    const title = document.getElementById("title").value || "Notification";
+    const body = document.getElementById("body").value || "";
+
+    try {
+      const n = new Notification(title, {
+        body: body,
+        icon: "https://cdn-icons-png.flaticon.com/512/3239/3239952.png",
+        badge: "https://cdn-icons-png.flaticon.com/512/3239/3239952.png"
+      });
+
+      n.onclick = () => {
+        log("Notification clicked.");
+        window.focus();
+        n.close();
+      };
+
+      n.onshow = () => log(`Shown: "${title}"`);
+      n.onerror = (e) => log(`Notification error: ${e}`);
+      n.onclose = () => log("Notification closed.");
+    } catch (err) {
+      log(`Error firing notification: ${err.message}`);
+    }
+  }
+
+  updateStatus();
+  log(`Initial permission: ${"Notification" in window ? Notification.permission : "unsupported"}`);
+</script>
+</body>
+</html>
