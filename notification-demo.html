@@ -240,29 +240,36 @@
     }
   }
 
-  function fire() {
+  async function fire() {
     const title = document.getElementById("title").value || "Notification";
     const body = document.getElementById("body").value || "";
+    const options = {
+      body,
+      icon: "https://cdn-icons-png.flaticon.com/512/3239/3239952.png",
+      badge: "https://cdn-icons-png.flaticon.com/512/3239/3239952.png"
+    };
 
     try {
-      const n = new Notification(title, {
-        body: body,
-        icon: "https://cdn-icons-png.flaticon.com/512/3239/3239952.png",
-        badge: "https://cdn-icons-png.flaticon.com/512/3239/3239952.png"
-      });
-
-      n.onclick = () => {
-        log("Notification clicked.");
-        window.focus();
-        n.close();
-      };
-
-      n.onshow = () => log(`Shown: "${title}"`);
-      n.onerror = (e) => log(`Notification error: ${e}`);
-      n.onclose = () => log("Notification closed.");
+      if ("serviceWorker" in navigator) {
+        const reg = await navigator.serviceWorker.ready;
+        await reg.showNotification(title, options);
+        log(`Shown: "${title}"`);
+      } else {
+        const n = new Notification(title, options);
+        n.onclick = () => { log("Notification clicked."); window.focus(); n.close(); };
+        n.onshow = () => log(`Shown: "${title}"`);
+        n.onerror = () => log("Notification error.");
+        n.onclose = () => log("Notification closed.");
+      }
     } catch (err) {
       log(`Error firing notification: ${err.message}`);
     }
+  }
+
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("sw.js")
+      .then(() => log("Service worker registered."))
+      .catch(err => log(`SW registration failed: ${err.message}`));
   }
 
   updateStatus();
